@@ -1,0 +1,7 @@
+dedalus
+mpi4py
+numpy
+h5py
+netCDF4
+matplotlib
+scipy
