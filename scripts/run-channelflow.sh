@@ -27,8 +27,9 @@ elif [ -d "${PROJECT_DIR}/.venv" ]; then
     source "${PROJECT_DIR}/.venv/bin/activate"
 fi
 
-# Add channelflow binaries and dedalus scripts to paths
+# Add channelflow binaries, libraries, and dedalus scripts to paths
 export PATH="${PROJECT_DIR}/install/bin:${PATH}"
+export LD_LIBRARY_PATH="${PROJECT_DIR}/install/lib:${LD_LIBRARY_PATH:-}"
 export PYTHONPATH="${PROJECT_DIR}/dedalus:${PYTHONPATH:-}"
 
 exec "$@"

@@ -29,9 +29,9 @@ class DedalusPy(DedalusInterface):
         self.N_Lc = 1
 
         self.parameters = {
-            "z_0"    : 0.51,
-            "d_2"    : 0.5,
-            "f"      : float(np.sqrt(13)),
+            "z_0"    : 3,
+            "d_2"    : 0.05,
+            "f"      : 2,
             "a"      : 1,
             "z_0_end": 3.1,
             "I_0"    : 1,
@@ -48,7 +48,7 @@ class DedalusPy(DedalusInterface):
 
         self.discrete_sym = "none"
         self.ramp = 0
-        self.init_field = "random"
+        self.init_field = "soliton"
 
         self.perturb = 0
         self.read_perturb = 0
@@ -73,7 +73,7 @@ class DedalusPy(DedalusInterface):
         self.write_cont_mat = 0
         self.write_cont_mat_filename = "./mat/"
 
-        self.Niter = 1000
+        self.Niter = 10000
         self.timestepper = de.RK222
 
         self.domain_setup(self.N_Lc)
@@ -88,7 +88,7 @@ class DedalusPy(DedalusInterface):
         f = self.parameters["f"]
         a = self.parameters["a"]
         roots = np.roots([1, -2*zeta, 1 + zeta**2, -f**2])
-        I_0 = np.max(roots[np.isreal(roots)])
+        I_0 = np.min(roots[np.isreal(roots)])
         psi_0 = f / (1 + 1j*(zeta - I_0))
         self.parameters["I_0"] = I_0
         self.parameters["psi_0"] = psi_0
@@ -104,7 +104,7 @@ class DedalusPy(DedalusInterface):
 
     def domain_setup(self, N_Lc):
         self.Nphi = self.N
-        self.L = 16*np.pi/11
+        self.L = 2*np.pi
         self.Lphi = N_Lc * self.L
         self.scale = 2  # dealias cubic nonlinearity
 
@@ -202,8 +202,9 @@ class DedalusPy(DedalusInterface):
             self.psi['g'] = (self.mag_perturb * np.random.rand(self.Nphi) +
                              1j * self.mag_perturb * np.random.rand(self.Nphi))
         elif self.init_field == "soliton":
-            A = np.sqrt(2 * self.parameters["z_"])
-            self.psi['g'] = A * 1j / np.cosh(A * self.phi / np.sqrt(2 * self.parameters["d_2"]))
+            A = np.sqrt(2 * self.parameters["z_0"])
+            phase = np.arccos(2 * A / (self.parameters["f"] * np.pi))
+            self.psi['g'] =  A * np.exp(1j * phase) / np.cosh(A * self.phi / np.sqrt(2 * self.parameters["d_2"]))
         elif self.init_field == "const":
             self.psi['g'] = self.parameters["psi_0"]
 
@@ -247,7 +248,7 @@ class DedalusPy(DedalusInterface):
 
     def observable(self, x):
         self.to_field(x)
-        return np.linalg.norm(self.psi['g'])**2 / self.N
+        return np.linalg.norm(self.psi['g']-self.parameters["psi_0"])**2 / self.N 
 
     def diff(self, u_init, dir):
         self.to_field(u_init)
@@ -284,17 +285,6 @@ class DedalusPy(DedalusInterface):
 
         u_out = self.to_vector()
         u_out = (u_out - u_init[:2*self.N]) / T
-
-        if self.write_cont_mat and np.linalg.norm(u_out) < 1e-7:
-            fname = (self.write_cont_mat_filename
-                     + f"f_2_{round(self.parameters['f'],5)}"
-                     + f"_z_0_{round(self.parameters['z_0'],5)}"
-                     + f"_L_{round(self.Lphi,5)}_N_Lc_{round(self.N_Lc,5)}.mat")
-            savemat(fname, {"psi": psi_array, "N": self.N,
-                            "f": self.parameters["f"],
-                            "z_0": self.parameters["z_0"],
-                            "L": self.Lphi})
-            self.write_cont_mat = 0
 
         return u_out
 
@@ -340,40 +330,6 @@ class DedalusPy(DedalusInterface):
         elif self.discrete_sym == 'const':
             self.psi.change_scales(1)
             self.psi['c'][self.kphi != 0] = 0
-
-    def plot_phase_space(self, psi_data):
-        fig = plt.figure(figsize=(10, 10))
-        ax = fig.add_subplot(111, projection='3d')
-
-        obs1 = np.mean(np.real(psi_data - self.parameters["psi_0"]), axis=1)
-        obs2 = np.mean(np.imag(psi_data - self.parameters["psi_0"]), axis=1)
-        psi_dev = psi_data - self.parameters["psi_0"]
-        obs3 = np.mean(np.imag(psi_dev * np.conj(np.gradient(psi_dev, axis=1))), axis=1)
-
-        ax.plot(obs2, obs1, obs3)
-
-        x_fixed = 0.075
-        delta = obs1 - x_fixed
-        crossings = np.where((delta[:-1] < 0) & (delta[1:] > 0))[0]
-        ax.scatter(obs2[crossings], obs1[crossings], obs3[crossings], color='dimgray', s=50)
-
-        x_range = np.linspace(min(obs2), max(obs2), 2)
-        z_range = np.linspace(min(obs3) - 0.01, max(obs3) + 0.01, 2)
-        X, Z = np.meshgrid(x_range, z_range)
-        Y = np.full_like(X, x_fixed)
-        ax.plot_surface(X, Y, Z, color='gray', alpha=0.3, edgecolor='none')
-
-        ax.view_init(elev=20, azim=70)
-        ax.set_xlabel(r"$\left<\mathrm{Im}(\psi-\psi_0)\right>_x$", labelpad=20)
-        ax.set_ylabel(r"$\left<\mathrm{Re}(\psi-\psi_0)\right>_x$", labelpad=20)
-        ax.set_zlabel(r"$\left<|\psi - \psi_\mathrm{reflect}|\right>_x$", labelpad=20)
-        for axis in [ax.xaxis, ax.yaxis, ax.zaxis]:
-            axis.set_tick_params(labelsize=14)
-            axis.label.set_size(14)
-
-        plt.savefig(self.write_filename + "/phase_space.png")
-        plt.close()
-
 
 if __name__ == "__main__":
 
