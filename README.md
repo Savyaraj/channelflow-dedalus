@@ -2,8 +2,8 @@
 # Channelflow-Dedalus
 
 <p align="center">
-  <img src="images/hopping.png" height="300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="images/active_media.png" height="300">
+  <img src="images/hopping.png" height="200">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="images/active_media.png" height="200">
 </p>
 
 This project enables computation of exact solutions to generic **PDE (Partial Differential Equation) systems** using string-based equation parsing from the [Dedalus](https://github.com/DedalusProject/dedalus) software (written in Python), coupled to the nsolver library in [channelflow](https://github.com/epfl-ecps/channelflow) for dynamical systems analysis (written in C++). It provides Newton-Krylov methods for computing stationary and periodic orbit solutions, numerical continuation for tracing solution branches through parameter space, and Arnoldi-based eigenvalue analysis for determining their linear stability.
